@@ -6,178 +6,111 @@ Ta wersja to **bot w Telegramie na test z 10–20 znajomymi przez ok. 2 tygodnie
 
 Wszystko działa w darmowych planach: Cloudflare Workers, baza D1, Google Gemini i Open-Meteo.
 
----
-
-## Spis treści
-
-1. [Co będzie potrzebne](#1-co-będzie-potrzebne)
-2. [Instalacja Node.js](#2-instalacja-nodejs)
-3. [Pobranie projektu](#3-pobranie-projektu)
-4. [Konto Cloudflare i logowanie](#4-konto-cloudflare-i-logowanie)
-5. [Baza danych D1](#5-baza-danych-d1)
-6. [Bot w Telegramie i Twoje ID](#6-bot-w-telegramie-i-twoje-id)
-7. [Klucz Gemini](#7-klucz-gemini)
-8. [Wdrożenie](#8-wdrożenie)
-9. [Sekrety](#9-sekrety)
-10. [Podpięcie webhooka](#10-podpięcie-webhooka)
-11. [Sprawdzenie, że działa](#11-sprawdzenie-że-działa)
-12. [Jak coś zmienić](#12-jak-coś-zmienić)
-13. [Komendy testowe admina](#13-komendy-testowe-admina)
-14. [Jak to działa w środku](#14-jak-to-działa-w-środku)
-15. [Gdy coś nie działa](#15-gdy-coś-nie-działa)
-16. [Lista kontrolna przed wysłaniem znajomym](#16-lista-kontrolna-przed-wysłaniem-znajomym)
+**Całą instalację robisz w przeglądarce.** Nie musisz niczego instalować na komputerze ani używać terminala.
 
 ---
 
-## 1. Co będzie potrzebne
+## Zanim zaczniesz
 
-- komputer z Windows, macOS albo Linuxem,
-- konto w Telegramie (aplikacja na telefonie wystarczy),
-- konto Google (do klucza Gemini),
-- ok. 30–45 minut.
+Przygotuj sobie (np. w notatniku):
 
-Wszystkie komendy wpisujesz w **terminalu**:
+- **token bota** od @BotFather,
+- **klucz Gemini** z Google AI Studio,
+- **swoje ID w Telegramie**: napisz `/start` do **@userinfobot**, a odpowie liczbą `Id: 123456789`,
+- **wymyślone hasło do webhooka**: 20+ znaków, tylko litery, cyfry, `_` i `-`, np. `pyzio_tajne_haslo_2026_xyz`,
+- **wymyślony kod zaproszenia**: litery, cyfry, `_` lub `-`, bez spacji, np. `PYZIO2026`.
 
-- **Windows:** menu Start → wpisz „PowerShell” → Enter.
-- **macOS:** Spotlight (⌘ + spacja) → „Terminal”.
+Potrzebne jest też konto na GitHubie z dostępem do repozytorium `Smartgotchi` (już je masz).
 
-## 2. Instalacja Node.js
+Całość zajmuje ok. 20–30 minut.
 
-1. Wejdź na <https://nodejs.org> i pobierz wersję **LTS**.
-2. Zainstaluj ją, klikając „Dalej” i zostawiając domyślne opcje.
-3. **Zamknij i otwórz terminal na nowo**, a potem sprawdź instalację:
+---
 
-   ```bash
-   node -v
-   npm -v
+## Krok 1. Konto Cloudflare
+
+Załóż darmowe konto na <https://dash.cloudflare.com/sign-up> i potwierdź adres e-mail.
+
+## Krok 2. Baza danych
+
+1. W panelu Cloudflare kliknij w menu po lewej **Storage & Databases → D1 SQL Database**.
+2. Kliknij **Create Database** (albo **Create**).
+3. Jako nazwę wpisz dokładnie: `smartgotchi-db`. Lokalizację zostaw domyślną i kliknij **Create**.
+4. Otworzy się strona bazy. Znajdź **Database ID** (ciąg w stylu `1234abcd-5678-...`) i **skopiuj go** do notatnika.
+
+**Utworzenie tabel:**
+
+1. Na stronie bazy otwórz zakładkę **Console**.
+2. W repozytorium na GitHubie otwórz plik `schema.sql`. Kliknij ikonę **Copy raw file** (dwa kwadraciki w prawym górnym rogu pliku).
+3. Wklej całość w okno konsoli i kliknij **Execute**.
+4. Sprawdź wynik: w zakładce **Tables** powinno pojawić się 8 tabel, m.in. `users`, `messages` i `activity`.
+
+> Jeśli konsola zgłosi błąd przy wklejeniu całości, wklejaj i wykonuj po jednym bloku `CREATE TABLE … ;` naraz.
+
+## Krok 3. Wpisanie ID bazy w repozytorium
+
+1. Na GitHubie otwórz w repozytorium plik `wrangler.toml`.
+2. Kliknij ikonę ołówka ✏️ (**Edit this file**).
+3. Znajdź linijkę:
+
+   ```toml
+   database_id = "WKLEJ-TUTAJ-SWOJE-DATABASE-ID"
    ```
 
-   Jeśli obie komendy pokażą numery wersji (np. `v22.x.x`), wszystko gra.
+   i podmień tekst w cudzysłowie na swoje Database ID z kroku 2. Cudzysłowy zostają.
+4. Kliknij **Commit changes…**, a potem jeszcze raz **Commit changes**.
 
-## 3. Pobranie projektu
+## Krok 4. Podpięcie repozytorium do Cloudflare
 
-**Sposób A, z Gitem:**
+1. W panelu Cloudflare kliknij **Workers & Pages** (menu po lewej, czasem w sekcji **Compute**).
+2. Kliknij **Create** (albo **Create application**), a potem **Import a repository**.
+3. Wybierz **GitHub** i zaloguj się. GitHub zapyta, do których repozytoriów dać dostęp Cloudflare: wybierz **Only select repositories → Smartgotchi** i zatwierdź.
+4. Wróć do Cloudflare i wybierz repozytorium **Smartgotchi**.
+5. W ustawieniach projektu:
+   - **Project name:** wpisz dokładnie `smartgotchi` (małymi literami). Nazwa musi zgadzać się z `wrangler.toml`, inaczej wdrożenie się nie uda.
+   - **Build command:** zostaw puste.
+   - **Deploy command:** zostaw domyślne `npx wrangler deploy`.
+   - Gałąź zostaw tę, którą Cloudflare podpowie.
+6. Kliknij **Create and deploy** (albo **Deploy**).
 
-```bash
-git clone https://github.com/amsooo/Smartgotchi.git
-cd Smartgotchi
-```
+Cloudflare pobierze kod i go wdroży, co trwa 1–2 minuty. Przebieg widać na ekranie. Gdy pojawi się **Success**, przejdź dalej.
 
-**Sposób B, bez Gita:** na stronie repozytorium w GitHubie kliknij zielony przycisk **Code → Download ZIP** i rozpakuj plik. Potem w terminalu przejdź do rozpakowanego folderu, np.:
-
-```bash
-cd Pobrane/Smartgotchi
-```
-
-Gdy jesteś już w folderze projektu, zainstaluj zależności:
-
-```bash
-npm install
-```
-
-> Wszystkie dalsze komendy wpisuj **w folderze projektu**.
-
-## 4. Konto Cloudflare i logowanie
-
-1. Załóż darmowe konto: <https://dash.cloudflare.com/sign-up>.
-2. W terminalu wpisz:
-
-   ```bash
-   npx wrangler login
-   ```
-
-   Otworzy się przeglądarka. Kliknij **Allow**. W terminalu powinien pojawić się komunikat `Successfully logged in`.
-
-## 5. Baza danych D1
-
-1. Utwórz bazę:
-
-   ```bash
-   npx wrangler d1 create smartgotchi-db
-   ```
-
-   Jeśli wrangler zapyta, czy dopisać bazę do konfiguracji, odpowiedz **nie** (`n`), bo wpis już jest w `wrangler.toml`.
-2. W odpowiedzi znajdziesz linijkę podobną do tej:
-
-   ```
-   "database_id": "1234abcd-5678-...."
-   ```
-
-3. Otwórz plik `wrangler.toml` w dowolnym edytorze (np. Notatniku albo VS Code) i podmień `WKLEJ-TUTAJ-SWOJE-DATABASE-ID` na swój identyfikator. Zapisz plik.
-4. Utwórz tabele:
-
-   ```bash
-   npm run db:init
-   ```
-
-   Jeśli wrangler zapyta o potwierdzenie, wpisz `y`.
-
-## 6. Bot w Telegramie i Twoje ID
-
-**Token bota:**
-
-1. W Telegramie znajdź **@BotFather** i napisz `/newbot`.
-2. Podaj nazwę (np. `Smartgotchi`) i nazwę użytkownika zakończoną na `bot` (np. `MojSmartgotchiBot`).
-3. BotFather przyśle **token**, czyli ciąg w stylu `7123456789:AAH...`. Zachowaj go dla siebie, bo to hasło do bota.
-
-**Twoje ID (żeby bot wiedział, kto jest adminem):**
-
-1. W Telegramie znajdź **@userinfobot** i napisz `/start`.
-2. Odpowie liczbą `Id: 123456789`. To jest Twoje `ADMIN_CHAT_ID`.
-
-## 7. Klucz Gemini
-
-1. Wejdź na <https://aistudio.google.com/apikey> i zaloguj się kontem Google.
-2. Kliknij **Create API key** i skopiuj klucz.
-
-> ⚠️ W darmowym planie Google może wykorzystywać treści rozmów do ulepszania swoich usług. Dlatego bot ostrzega testerów na starcie, żeby nie pisali nic prywatnego.
->
-> Model ustawiasz w `wrangler.toml` (`GEMINI_MODEL`). Domyślnie jest to `gemini-3.5-flash-lite`. Limity darmowego planu dla Twojego klucza sprawdzisz w AI Studio, w zakładce **Rate limits**. Gdyby model zniknął albo zmienił nazwę, aktualną listę znajdziesz tutaj: <https://ai.google.dev/gemini-api/docs/models>.
-
-## 8. Wdrożenie
-
-```bash
-npm run deploy
-```
-
-Przy pierwszym wdrożeniu Cloudflare może poprosić o wybranie nazwy subdomeny `workers.dev`. Wybierz dowolną. Na końcu zobaczysz adres bota, np.:
+Na stronie Workera znajdziesz jego adres, np.:
 
 ```
 https://smartgotchi.twoja-subdomena.workers.dev
 ```
 
-**Zapisz ten adres**, przyda się za chwilę.
+**Skopiuj go do notatnika.**
 
-## 9. Sekrety
+> Od tej pory każda zmiana w repozytorium (np. edycja pliku na GitHubie) wdraża się automatycznie. Historię wdrożeń widać w zakładce **Deployments**.
 
-Sekrety to hasła i klucze, które nie mogą trafić do kodu. Każdą komendę wpisz osobno. Wrangler poprosi o wartość: wklej ją i naciśnij Enter. Podczas wklejania nic się nie wyświetla i tak ma być.
+## Krok 5. Sekrety
 
-```bash
-npx wrangler secret put TELEGRAM_TOKEN
-npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
-npx wrangler secret put GEMINI_API_KEY
-npx wrangler secret put ADMIN_CHAT_ID
-npx wrangler secret put INVITE_CODE
+Sekrety to hasła i klucze, których nie zapisujemy w kodzie.
+
+1. W **Workers & Pages** kliknij **smartgotchi**, a potem **Settings → Variables and Secrets**.
+2. Kliknij **Add** i dodaj po kolei pięć wpisów. Przy każdym ustaw **Type: Secret**, nie „Text”.
+
+   | Variable name | Value |
+   |---|---|
+   | `TELEGRAM_TOKEN` | token od @BotFather |
+   | `TELEGRAM_WEBHOOK_SECRET` | wymyślone hasło do webhooka |
+   | `GEMINI_API_KEY` | klucz Gemini |
+   | `ADMIN_CHAT_ID` | Twoje ID w Telegramie |
+   | `INVITE_CODE` | wymyślony kod zaproszenia |
+
+3. Kliknij **Deploy** (albo **Save and deploy**).
+
+> ⚠️ Typ **Secret** jest ważny. Zwykłe zmienne („Text”) znikają przy każdym automatycznym wdrożeniu z GitHuba, a sekrety zostają.
+>
+> Nazwy wpisuj dokładnie tak jak w tabeli, wielkimi literami. Pomyłka w jednej literze i bot nie zadziała.
+
+## Krok 6. Podpięcie bota do Telegrama
+
+Wklej w przeglądarkę ten adres, podmieniając dwie rzeczy (subdomenę i hasło do webhooka):
+
 ```
-
-Co gdzie wpisać:
-
-| Sekret | Wartość |
-|---|---|
-| `TELEGRAM_TOKEN` | token od BotFathera |
-| `TELEGRAM_WEBHOOK_SECRET` | **wymyśl** długie hasło (20+ znaków). Dozwolone są tylko litery, cyfry, `_` i `-`, np. `pyzio_tajne_haslo_2026_xyz` |
-| `GEMINI_API_KEY` | klucz z AI Studio |
-| `ADMIN_CHAT_ID` | Twoje ID od @userinfobot |
-| `INVITE_CODE` | **wymyśl** kod zaproszenia: litery, cyfry, `_` lub `-`, bez spacji, np. `PYZIO2026` |
-
-Sekrety działają od razu i nie trzeba ponownie wdrażać.
-
-## 10. Podpięcie webhooka
-
-Webhook mówi Telegramowi, gdzie ma wysyłać wiadomości do bota. Wklej w przeglądarkę ten adres, podmieniając dwie rzeczy:
-
-```
-https://smartgotchi.TWOJA-SUBDOMENA.workers.dev/setup?secret=TWOJ_TELEGRAM_WEBHOOK_SECRET
+https://smartgotchi.TWOJA-SUBDOMENA.workers.dev/setup?secret=TWOJE_HASLO_DO_WEBHOOKA
 ```
 
 Strona powinna pokazać coś takiego:
@@ -193,52 +126,33 @@ https://t.me/MojSmartgotchiBot?start=PYZIO2026
 
 **Ten ostatni link wysyłasz znajomym.** Bez kodu z linku bot nikogo nie wpuści. Wyjątkiem jesteś Ty jako admin: Tobie wystarczy samo `/start`.
 
-<details>
-<summary>Alternatywa: ręczne ustawienie przez API Telegrama</summary>
-
-Wklej w przeglądarkę, podmieniając wartości:
-
-```
-https://api.telegram.org/botTWOJ_TOKEN/setWebhook?url=https://smartgotchi.TWOJA-SUBDOMENA.workers.dev/webhook&secret_token=TWOJ_TELEGRAM_WEBHOOK_SECRET&drop_pending_updates=true
-```
-
-Odpowiedź `{"ok":true,...}` oznacza sukces. Link z zaproszeniem złożysz wtedy sam: `https://t.me/NAZWA_BOTA?start=KOD`.
-</details>
-
-## 11. Sprawdzenie, że działa
+## Krok 7. Sprawdzenie, że działa
 
 1. Otwórz `https://smartgotchi.TWOJA-SUBDOMENA.workers.dev/`. Powinien pojawić się napis **„Smartgotchi działa 🐣”**.
-2. Sprawdź webhook w Telegramie:
+2. Napisz do bota w Telegramie `/start`, nadaj imię, podaj miasto i pogadaj z jajkiem.
+3. Napisz `/stats`. Admin powinien dostać statystyki.
+4. Podgląd tego, co się dzieje, znajdziesz w **Workers & Pages → smartgotchi → Logs**. Tam widać też ewentualne błędy.
 
-   ```
-   https://api.telegram.org/botTWOJ_TOKEN/getWebhookInfo
-   ```
+---
 
-   Pole `url` powinno wskazywać na Twój adres `/webhook`, a `last_error_message` powinno być puste.
-3. Napisz do bota `/start`, nadaj imię, podaj miasto i pogadaj z jajkiem.
-4. Napisz `/stats`, żeby zobaczyć statystyki (tylko admin).
-5. Logi na żywo zobaczysz w osobnym oknie terminala:
+## Jak coś zmienić
 
-   ```bash
-   npm run logs
-   ```
+Wszystko edytujesz na GitHubie: otwórz plik → ✏️ → zmień → **Commit changes**. Cloudflare sam wdroży nową wersję w 1–2 minuty.
 
-   Logi znajdziesz też w panelu Cloudflare: **Workers & Pages → smartgotchi → Logs**.
-
-## 12. Jak coś zmienić
-
-| Co | Gdzie | Potem |
-|---|---|---|
-| Osobowość, styl mówienia | `persona.md` | `npm run deploy` |
-| Harmonogram etapów, limity, tempo potrzeb, godziny zadań | `src/config.ts` | `npm run deploy` |
-| Model Gemini | `wrangler.toml` → `GEMINI_MODEL` | `npm run deploy` |
-| Kod zaproszenia | `npx wrangler secret put INVITE_CODE` | nic |
+| Co | Plik |
+|---|---|
+| Osobowość, styl mówienia | `persona.md` |
+| Harmonogram etapów, limity, tempo potrzeb, godziny zadań | `src/config.ts` |
+| Model Gemini | `wrangler.toml` → `GEMINI_MODEL` |
+| Kod zaproszenia | panel Cloudflare → Settings → Variables and Secrets → `INVITE_CODE` |
 
 W `persona.md` możesz używać tych pól (bot podmienia je na aktualne dane): `{imie}`, `{imie_uzytkownika}`, `{etap}`, `{charakter}`, `{sylwetka}`, `{glod}`, `{nastroj}`, `{energia}`, `{dzien_tygodnia}`, `{data}`, `{godzina}`, `{pogoda}`, `{swieto}`, `{pamiec}`, `{slowka}`.
 
 Kod dodaje na końcu persony krótki blok „Uwagi techniczne”: wyjaśnia skalę potrzeb (5 = najedzony / wesoły / wypoczęty) i podaje długość odpowiedzi dla danego etapu. Długości zmieniasz w `src/config.ts` (`lengthHint`).
 
-## 13. Komendy testowe admina
+Domyślny model to `gemini-3.5-flash-lite`. Limity darmowego planu dla swojego klucza sprawdzisz w Google AI Studio, w zakładce **Rate limits**. Gdyby model zniknął albo zmienił nazwę, aktualna lista jest tutaj: <https://ai.google.dev/gemini-api/docs/models>.
+
+## Komendy testowe admina
 
 Działają tylko dla `ADMIN_CHAT_ID` i tylko na **Twoim** zwierzaku. Dzięki nim nie musisz czekać 2 tygodni, żeby zobaczyć ewolucję.
 
@@ -251,7 +165,7 @@ Działają tylko dla `ADMIN_CHAT_ID` i tylko na **Twoim** zwierzaku. Dzięki nim
 
 Admin domyślnie nie ma limitu 15 wiadomości (`adminUnlimited` w `src/config.ts`). Jeśli chcesz sprawdzić, jak działa limit, ustaw tam `false`.
 
-## 14. Jak to działa w środku
+## Jak to działa w środku
 
 ```
 Telegram ──webhook──▶ Cloudflare Worker ──▶ D1 (baza)
@@ -287,19 +201,23 @@ Kilka ważnych zasad:
 - **Charakter.** Każdej nocy AI przyznaje 0–3 pkt za żarty, rozmowy o życiu, zagadki, ciekawość, sport, łagodność i sztukę. Kod dolicza punkty za późne pory (pisanie 23:00–5:00) i zaniedbanie (dzień bez żadnego kontaktu). Na etapie „młody dorosły” wygrywa cecha z największą liczbą punktów. Zrzęda pojawia się tylko wtedy, gdy zaniedbanie wyraźnie prowadzi.
 - **Prywatność.** Wiadomości są kasowane po 7 dniach, a długoterminowo zostaje tylko notatka pamięci. `/usun` kasuje wszystko o danej osobie.
 
-## 15. Gdy coś nie działa
+## Gdy coś nie działa
 
 | Objaw | Co sprawdzić |
 |---|---|
-| Bot milczy | `getWebhookInfo` (punkt 11): czy jest `url` i czy nie ma błędu? Czy `npm run logs` coś pokazuje? |
-| `last_error_message: Wrong response from the webhook: 403` | `TELEGRAM_WEBHOOK_SECRET` w Cloudflare różni się od tego w webhooku. Otwórz ponownie adres `/setup`. |
-| Bot odpowiada tylko „…jest strasznie śpiący” | Gemini zwraca błąd. Napisz `/stats` i sprawdź licznik błędów, a w `npm run logs` zobaczysz szczegóły. Najczęstsze przyczyny to zły klucz, wyczerpany limit albo nieaktualna nazwa modelu. |
-| `no such table: users` | Nie uruchomiono `npm run db:init` (punkt 5). |
+| Wdrożenie w kroku 4 kończy się błędem | W zakładce **Deployments** kliknij nieudane wdrożenie i przeczytaj log. Najczęstsze przyczyny: nazwa projektu inna niż `smartgotchi` albo niepodmienione `database_id` w `wrangler.toml` (krok 3). |
+| Strona `/setup` pokazuje „Zły sekret w adresie” | Hasło w adresie różni się od sekretu `TELEGRAM_WEBHOOK_SECRET`. |
+| Strona `/setup` pokazuje błąd Telegrama | Sprawdź sekret `TELEGRAM_TOKEN`. |
+| Bot milczy | Wklej w przeglądarkę `https://api.telegram.org/botTWOJ_TOKEN/getWebhookInfo`. Pole `url` powinno wskazywać na Twój `/webhook`, a `last_error_message` powinno być puste. Zajrzyj też do zakładki **Logs**. |
+| `last_error_message: Wrong response from the webhook: 403` | Sekret `TELEGRAM_WEBHOOK_SECRET` zmienił się po podpięciu. Otwórz ponownie adres `/setup` z kroku 6. |
+| Bot odpowiada tylko „…jest strasznie śpiący” | Gemini zwraca błąd. Napisz `/stats` i sprawdź licznik błędów, a szczegóły zobaczysz w **Logs**. Najczęstsze przyczyny to zły klucz, wyczerpany limit albo nieaktualna nazwa modelu. |
+| W logach `no such table: users` | Tabele nie powstały. Powtórz krok 2 (Console + `schema.sql`). |
+| Po zmianie na GitHubie bot „zgubił” klucze | Sekrety dodano jako „Text” zamiast „Secret”. Dodaj je ponownie jako **Secret** (krok 5). |
 | Znajomy dostaje „To zamknięta wersja testowa” | Napisał `/start` bez linku. Musi kliknąć link z kodem. |
 
 ---
 
-## 16. Lista kontrolna przed wysłaniem znajomym
+## Lista kontrolna przed wysłaniem znajomym
 
 Przejdź ją samodzielnie na swoim koncie. Najlepiej zrób to też z drugiego konta Telegram (np. znajomego), bo admin ma kilka wyjątków.
 
@@ -328,9 +246,27 @@ Przejdź ją samodzielnie na swoim koncie. Najlepiej zrób to też z drugiego ko
 
 **Limity i błędy**
 - [ ] Z drugiego konta wyślij 16 wiadomości → 16. kończy się „idzie spać”.
-- [ ] Ustaw zły klucz (`npx wrangler secret put GEMINI_API_KEY` → byle co) → bot odpowiada w roli, a `/stats` pokazuje błąd. **Potem przywróć dobry klucz!**
+- [ ] W panelu zmień sekret `GEMINI_API_KEY` na byle co → bot odpowiada w roli, a `/stats` pokazuje błąd. **Potem przywróć dobry klucz!**
 
 **Usuwanie**
 - [ ] `/usun` → „Nie” niczego nie usuwa, a „Tak” kasuje dane i `/stan` już nic nie pokazuje.
 
 Gdy wszystko jest zaznaczone, wyślij znajomym link z zaproszeniem. Powodzenia! 🐣
+
+---
+
+<details>
+<summary>Dla zaawansowanych: instalacja z terminala</summary>
+
+Jeśli kiedyś wolisz terminal (wymaga Node.js):
+
+```bash
+npm install
+npx wrangler login
+npx wrangler d1 create smartgotchi-db      # wklej database_id do wrangler.toml
+npm run db:init
+npm run deploy
+npx wrangler secret put TELEGRAM_TOKEN     # i tak samo pozostałe 4 sekrety
+npm run logs                               # logi na żywo
+```
+</details>
