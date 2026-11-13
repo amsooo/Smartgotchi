@@ -58,6 +58,7 @@ async function setup(env: Env, origin: string): Promise<Response> {
     await tg(env, "setMyCommands", {
       commands: [
         { command: "stan", description: "Jak się ma zwierzak" },
+        { command: "temat", description: "Pomysły, o czym pogadać" },
         { command: "pomoc", description: "Co umiem" },
         { command: "usun", description: "Usuń wszystkie moje dane" },
       ],

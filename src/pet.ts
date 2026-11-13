@@ -223,8 +223,9 @@ export function eggReply(user: User, now = Date.now()): string {
 
 // ---------- Gotowe teksty w roli (bez AI) ----------
 
-type Group = "egg" | "small" | "big";
-function group(user: User): Group {
+/** Grupa etapów: jajko / małe (maluch, dziecko) / duże (od nastolatka). */
+export type Group = "egg" | "small" | "big";
+export function stageGroup(user: User): Group {
   if (user.stage === "jajko") return "egg";
   if (user.stage === "maluch" || user.stage === "dziecko") return "small";
   return "big";
@@ -232,7 +233,7 @@ function group(user: User): Group {
 
 /** Po wyczerpaniu dziennego limitu wiadomości. */
 export function sleepyLimitText(user: User): string {
-  const g = group(user);
+  const g = stageGroup(user);
   if (g === "egg") return "*jajko zasnęło na dziś. Cichutko…* 💤";
   if (user.stage === "maluch") return "Ziew… pa pa… 💤";
   return withName("{imie} ziewa i zakopuje się w kocyk. Na dziś koniec gadania, pogadamy jutro! 💤", user);
@@ -252,7 +253,7 @@ export function aiErrorText(user: User): string {
 
 /** Jedno „tęsknię” po kilku dniach ciszy. Bez straszenia i bez poczucia winy. */
 export function missYouText(user: User): string {
-  const g = group(user);
+  const g = stageGroup(user);
   if (g === "egg") return "*jajko cichutko puka, jakby sprawdzało, czy jesteś w pobliżu*";
   if (user.stage === "maluch") return "Tę-sknię! 🥺";
   return withName(
@@ -268,7 +269,7 @@ export function eggMorningText(): string {
 
 /** Gdy ktoś wyśle zdjęcie, naklejkę itp. */
 export function nonTextReply(user: User): string {
-  if (group(user) === "egg") return "*jajko się kołysze*";
+  if (stageGroup(user) === "egg") return "*jajko się kołysze*";
   if (user.stage === "maluch") return "Ooo? 👀";
   return withName("{imie} przekrzywia głowę. Na razie rozumie tylko literki!", user);
 }
@@ -280,7 +281,7 @@ export type Action = "feed" | "play" | "sleep";
  * Zmienia potrzeby w obiekcie `user` i zwraca tekst reakcji.
  */
 export function applyAction(user: User, action: Action): string {
-  const g = group(user);
+  const g = stageGroup(user);
   let text: string;
 
   if (action === "feed") {

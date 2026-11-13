@@ -142,6 +142,7 @@ Wszystko edytujesz na GitHubie: otwórz plik → ✏️ → zmień → **Commit 
 | Co | Plik |
 |---|---|
 | Osobowość, styl mówienia | `persona.md` |
+| Pomysły na rozmowę (przycisk „💡 O czym pogadać?”) | `src/topics.ts` |
 | Harmonogram etapów, limity, tempo potrzeb, godziny zadań | `src/config.ts` |
 | Model Gemini | `wrangler.toml` → `GEMINI_MODEL` |
 | Kod zaproszenia | panel Cloudflare → Settings → Variables and Secrets → `INVITE_CODE` |
@@ -182,6 +183,7 @@ Cron co 5 min ─────────────┘   (sprawdza godzinę po
 | `src/chat.ts` | rozmowa z AI, poranek, nocne streszczenie |
 | `src/cron.ts` | zadania okresowe |
 | `src/pet.ts` | etapy, potrzeby, sylwetka, charakter, gotowe teksty |
+| `src/topics.ts` | pomysły na rozmowę: pytania do kliknięcia i podpowiedzi |
 | `src/persona.ts` | składanie promptu z `persona.md` |
 | `src/config.ts` | **wszystkie ustawienia** |
 | `src/stats.ts` | statystyki |
@@ -237,6 +239,7 @@ Przejdź ją samodzielnie na swoim koncie. Najlepiej zrób to też z drugiego ko
 - [ ] Prośba o zadanie domowe → zwierzak się wykręca.
 - [ ] Wiadomość o złym samopoczuciu → ciepła odpowiedź z numerem 116 123.
 - [ ] Zdjęcie lub naklejka → krótka reakcja, bez błędu.
+- [ ] Przycisk „💡 O czym pogadać?” (albo `/temat`) → pomysły pasujące do etapu, a kliknięte pytanie trafia do zwierzaka.
 
 **Pamięć i zadania okresowe**
 - [ ] Opowiedz coś o sobie (np. „w piątek mam rozmowę o pracę”) → `/test_noc` → notatka zawiera tę informację.

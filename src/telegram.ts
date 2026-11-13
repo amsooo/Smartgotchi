@@ -14,6 +14,7 @@ export const PET_KEYBOARD: InlineKeyboard = [
     { text: "🎾 Pobaw się", callback_data: "play" },
     { text: "💤 Uśpij", callback_data: "sleep" },
   ],
+  [{ text: "💡 O czym pogadać?", callback_data: "ideas" }],
 ];
 
 /** Wywołuje dowolną metodę Telegram Bot API. */

@@ -24,12 +24,14 @@ import {
   needsLine,
   nonTextReply,
   sleepyLimitText,
+  stageGroup,
   statusCard,
   type Action,
 } from "./pet";
 import { buildStats } from "./stats";
 import { answerCallback, editMessage, PET_KEYBOARD, sendMessage, sendTyping } from "./telegram";
 import { DAY_MS } from "./time";
+import { TOPICS } from "./topics";
 import type { Env, User } from "./types";
 import { geocodeCity } from "./weather";
 
@@ -47,6 +49,7 @@ Za chwilę dostaniesz jajko 🥚 Najpierw: jak nazwiesz swojego zwierzaka? Napis
 const HELP = `Co umiem:
 • Po prostu pisz – zwierzak odpowie (na początku jako jajko 🥚).
 • Przyciski pod wiadomościami: 🍖 Nakarm, 🎾 Pobaw się, 💤 Uśpij.
+• 💡 O czym pogadać? (albo /temat) – pomysły, gdy nie wiesz, co napisać.
 • /stan – jak się ma zwierzak
 • /usun – usuń wszystkie swoje dane
 Dziennie możesz wysłać ${LIMITS.dailyMessages} wiadomości. Potem zwierzak idzie spać do jutra.`;
@@ -100,7 +103,7 @@ async function handleMessage(env: Env, msg: any): Promise<void> {
   if (user.status === "ask_name") return handleNameAnswer(env, user, text);
   if (user.status === "ask_city") return handleCityAnswer(env, user, text);
 
-  await handleChat(env, user, msg, text);
+  await handleChat(env, user, text);
 }
 
 async function handleCommand(
@@ -114,6 +117,13 @@ async function handleCommand(
   switch (command) {
     case "/start":
       return handleStart(env, chatId, msg, user, args[0] ?? "");
+
+    case "/temat":
+      if (!user || user.status !== "active") {
+        await sendMessage(env, chatId, user ? "Najpierw dokończmy zapis 🙂" : NOT_INVITED);
+        return;
+      }
+      return sendIdeas(env, user);
 
     case "/pomoc":
     case "/help":
@@ -271,7 +281,7 @@ async function finishOnboarding(env: Env, user: User): Promise<void> {
 
 // ---------- Zwykła rozmowa ----------
 
-async function handleChat(env: Env, user: User, msg: any, text: string): Promise<void> {
+async function handleChat(env: Env, user: User, text: string): Promise<void> {
   const chatId = user.chat_id;
   const now = Date.now();
   applyDecay(user, now);
@@ -307,6 +317,40 @@ async function handleChat(env: Env, user: User, msg: any, text: string): Promise
   await sendTyping(env, chatId);
   const reply = await petReply(env, user);
   await sendMessage(env, chatId, reply ?? aiErrorText(user), PET_KEYBOARD);
+}
+
+// ---------- Pomysły na rozmowę ----------
+
+/** Losuje `count` różnych numerów z zakresu 0..length-1. */
+function randomIndexes(length: number, count: number): number[] {
+  const all = Array.from({ length }, (_, i) => i);
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  return all.slice(0, count);
+}
+
+/** Wiadomość z pomysłami: 2 rzeczy do opowiedzenia + 3 pytania do kliknięcia. */
+async function sendIdeas(env: Env, user: User): Promise<void> {
+  const group = stageGroup(user);
+  const set = TOPICS[group];
+  const tell = randomIndexes(set.tell.length, 2).map((i) => `• ${set.tell[i]}`);
+  const questions = randomIndexes(set.questions.length, 3);
+
+  const lines = [
+    ...(group === "egg" ? ["🥚 Jajko jeszcze nie mówi, ale wszystko słyszy!", ""] : []),
+    "💡 Możesz mu na przykład opowiedzieć:",
+    ...tell,
+    "",
+    "Albo kliknij pytanie poniżej, a od razu trafi do zwierzaka 👇",
+  ];
+  const text = lines.join("\n");
+
+  await sendMessage(env, user.chat_id, text, [
+    ...questions.map((i) => [{ text: set.questions[i], callback_data: `ask:${group}:${i}` }]),
+    [{ text: "🔄 Inne pomysły", callback_data: "ideas" }],
+  ]);
 }
 
 // ---------- Przyciski ----------
@@ -356,6 +400,22 @@ async function handleCallback(env: Env, cq: any): Promise<void> {
     await updateUser(env, chatId, needsFields(user));
     await sendMessage(env, chatId, `${reaction}\n\n${needsLine(user)}`, PET_KEYBOARD);
     return;
+  }
+
+  // Pomysły na rozmowę
+  if (data === "ideas" && user.status === "active") {
+    await answerCallback(env, cq.id);
+    return sendIdeas(env, user);
+  }
+  // Kliknięte pytanie, np. „ask:big:3” – wysyłamy je do zwierzaka jak zwykłą wiadomość.
+  if (data.startsWith("ask:") && user.status === "active") {
+    const [, group, index] = data.split(":");
+    const question = TOPICS[group as keyof typeof TOPICS]?.questions[Number(index)];
+    await answerCallback(env, cq.id);
+    if (!question) return;
+    // Zamieniamy wiadomość z pomysłami na „Ty: …” (i chowamy przyciski, żeby nie klikać dwa razy).
+    await editMessage(env, chatId, cq.message.message_id, `💬 Ty: ${question}`);
+    return handleChat(env, user, question);
   }
 
   await answerCallback(env, cq.id); // stary albo nieaktualny przycisk
