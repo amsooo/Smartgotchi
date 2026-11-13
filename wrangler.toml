@@ -3,6 +3,9 @@ name = "smartgotchi"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 
+# Publiczny adres https://smartgotchi.<subdomena>.workers.dev (potrzebny dla Telegrama)
+workers_dev = true
+
 # Zwykłe (nie-tajne) ustawienia. Sekrety ustawiasz komendą `npx wrangler secret put NAZWA`.
 [vars]
 # Model Gemini. Aktualne nazwy: https://ai.google.dev/gemini-api/docs/models
