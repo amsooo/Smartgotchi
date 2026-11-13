@@ -1,0 +1,29 @@
+# Konfiguracja Cloudflare Workera dla Smartgotchi
+name = "smartgotchi"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Zwykłe (nie-tajne) ustawienia. Sekrety ustawiasz komendą `npx wrangler secret put NAZWA`.
+[vars]
+# Model Gemini. Aktualne nazwy: https://ai.google.dev/gemini-api/docs/models
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+
+# Baza danych D1. Po `npx wrangler d1 create smartgotchi-db` wklej tu swoje database_id.
+[[d1_databases]]
+binding = "DB"
+database_name = "smartgotchi-db"
+database_id = "WKLEJ-TUTAJ-SWOJE-DATABASE-ID"
+
+# Cron co 5 minut (w UTC). Kod sam sprawdza godzinę polską i decyduje, co zrobić.
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Pozwala wczytać persona.md jako tekst (edytujesz plik → npm run deploy).
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
+# Logi widoczne w panelu Cloudflare (Workers → smartgotchi → Logs)
+[observability]
+enabled = true

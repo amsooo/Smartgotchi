@@ -1,0 +1,19 @@
+{
+  "name": "smartgotchi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Smartgotchi – wirtualny zwierzak z AI w Telegramie (wersja testowa)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit",
+    "db:init": "wrangler d1 execute smartgotchi-db --remote --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute smartgotchi-db --local --file=./schema.sql",
+    "logs": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261113.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.161.0"
+  }
+}
